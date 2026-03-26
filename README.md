@@ -48,6 +48,7 @@ The dashboard tracks:
   Adds broader context for risk tone and commodity support.
 
 ## Notes
+FX levels are pulled from a free API, while macro data is partially fetched from public sources with fallback assumptions. The focus is on structuring relationships rather than building a fully production-grade data pipeline.
 
 This is a macro monitoring tool, not a full trading system.  
 It is designed to help interpret LatAm FX moves in a cleaner and more structured way.
