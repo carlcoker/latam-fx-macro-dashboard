@@ -21,7 +21,6 @@
     --green: #00d4a0;
     --green2: #00a87e;
     --red: #ff4757;
-    --red2: #cc2e3f;
     --amber: #ffc107;
     --blue: #3b82f6;
     --purple: #8b5cf6;
@@ -214,7 +213,6 @@
   }
 
   .card-body { padding: 16px; }
-
   .fx-grid { grid-column: span 2; }
 
   .fx-table {
@@ -244,12 +242,12 @@
     font-family: var(--mono);
     font-size: 12px;
     color: var(--text);
+    vertical-align: top;
   }
 
   .fx-table td:first-child { text-align: left; padding-left: 0; }
   .fx-table td:last-child { padding-right: 0; }
   .fx-table tr:last-child td { border-bottom: none; }
-
   .fx-table tr:hover td { background: rgba(255,255,255,0.02); }
 
   .pair-name {
@@ -673,7 +671,6 @@
 <script>
 /* ============================================================
    1. USER SETTINGS
-   Edit these first
 ============================================================ */
 const SETTINGS = {
   dashboardTitleHTML: `EM·FX <span>/ MACRO MONITOR</span>`,
@@ -684,7 +681,7 @@ const SETTINGS = {
 
 /* ============================================================
    2. USER DATA
-   This is the only section you really need to touch on GitHub
+   This is the section you edit most often on GitHub
 ============================================================ */
 const USER_DATA = {
   currencies: [
@@ -723,7 +720,7 @@ const USER_DATA = {
     shortScore: 62,
     longScore: 38,
     mispricingTrigger: 0.10,
-    watchTrigger: 0.15
+    watchZScore: 1.25
   }
 };
 
@@ -759,6 +756,22 @@ function applyDashboardTitle() {
 function safePercentChange(current, previous) {
   if (previous === 0 || previous === null || previous === undefined) return 0;
   return ((current - previous) / previous) * 100;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function mean(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function stdDev(arr) {
+  if (!arr.length) return 0;
+  const m = mean(arr);
+  const variance = arr.reduce((acc, x) => acc + (x - m) ** 2, 0) / arr.length;
+  return Math.sqrt(variance);
 }
 
 /* ============================================================
@@ -885,7 +898,7 @@ function computeMacroScore(currency) {
     score -= cuMom * 5 * beta;
   }
 
-  return Math.max(0, Math.min(100, score));
+  return clamp(score, 0, 100);
 }
 
 function computeMispricing(currency) {
@@ -897,6 +910,102 @@ function computeMispricing(currency) {
 
   const expectedFxChg = (score - 50) * 0.15;
   return fxChg - expectedFxChg;
+}
+
+function getDriverBreakdown(currency) {
+  const dxy = state.macro.DXY;
+  const y10 = state.macro.US10Y;
+  const y2 = state.macro.US2Y;
+  const oil = state.macro.OIL;
+  const copper = state.macro.COPPER;
+
+  const drivers = [];
+
+  if (dxy) {
+    const dxyMom = safePercentChange(dxy.value, dxy.prev);
+    drivers.push({
+      name: 'DXY',
+      impact: dxyMom * 8 * currency.beta,
+      text: `DXY ${dxyMom >= 0 ? 'up' : 'down'} ${Math.abs(dxyMom).toFixed(2)}%`
+    });
+  }
+
+  if (y10) {
+    const yieldImpact = (y10.value - 4.0) * 6;
+    drivers.push({
+      name: 'US10Y',
+      impact: yieldImpact,
+      text: `US 10Y at ${y10.value.toFixed(2)}%`
+    });
+  }
+
+  if (y10 && y2) {
+    const spread = y10.value - y2.value;
+    const curveImpact = spread < 0 ? Math.abs(spread) * 10 : 0;
+    drivers.push({
+      name: 'Curve',
+      impact: curveImpact,
+      text: spread < 0
+        ? `curve inverted by ${Math.abs(spread).toFixed(2)}%`
+        : `curve positive by ${spread.toFixed(2)}%`
+    });
+  }
+
+  if (currency.commodity === 'OIL' && oil) {
+    const oilMom = safePercentChange(oil.value, oil.prev);
+    drivers.push({
+      name: 'Oil',
+      impact: -(oilMom * 5 * currency.beta),
+      text: `oil ${oilMom >= 0 ? 'up' : 'down'} ${Math.abs(oilMom).toFixed(2)}%`
+    });
+  }
+
+  if (currency.commodity === 'CU' && copper) {
+    const cuMom = safePercentChange(copper.value, copper.prev);
+    drivers.push({
+      name: 'Copper',
+      impact: -(cuMom * 5 * currency.beta),
+      text: `copper ${cuMom >= 0 ? 'up' : 'down'} ${Math.abs(cuMom).toFixed(2)}%`
+    });
+  }
+
+  drivers.sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
+  return drivers;
+}
+
+function computeMispricingZScore(currency) {
+  const currentMispricing = computeMispricing(currency);
+
+  const dxy = state.macro.DXY;
+  const y10 = state.macro.US10Y;
+  const oil = state.macro.OIL;
+  const copper = state.macro.COPPER;
+
+  const history = [];
+
+  for (let i = 0; i < 20; i++) {
+    const dxyShock = dxy ? safePercentChange(dxy.value, dxy.prev) + (Math.random() - 0.5) * 0.6 : 0;
+    const yShock = y10 ? (y10.value - 4.0) + (Math.random() - 0.5) * 0.25 : 0;
+    const oilShock = oil ? safePercentChange(oil.value, oil.prev) + (Math.random() - 0.5) * 1.0 : 0;
+    const cuShock = copper ? safePercentChange(copper.value, copper.prev) + (Math.random() - 0.5) * 1.0 : 0;
+    const fxNoise = (Math.random() - 0.5) * 1.2;
+
+    let syntheticScore = 50 + dxyShock * 8 * currency.beta + yShock * 6;
+
+    if (currency.commodity === 'OIL') syntheticScore -= oilShock * 5 * currency.beta;
+    if (currency.commodity === 'CU') syntheticScore -= cuShock * 5 * currency.beta;
+
+    const expectedFx = (syntheticScore - 50) * 0.15;
+    const realisedFx = expectedFx + fxNoise;
+    const syntheticMispricing = realisedFx - expectedFx;
+
+    history.push(syntheticMispricing);
+  }
+
+  const sigma = stdDev(history);
+  if (!sigma || sigma < 1e-6) return 0;
+
+  return (currentMispricing - mean(history)) / sigma;
 }
 
 /* ============================================================
@@ -967,7 +1076,8 @@ function renderFXTable() {
 
     const score = computeMacroScore(c);
     const mispricing = computeMispricing(c);
-    const riskScore = Math.abs(score - 50) + Math.abs(mispricing) * 10;
+    const zScore = computeMispricingZScore(c);
+    const riskScore = Math.abs(score - 50) + Math.abs(mispricing) * 10 + Math.abs(zScore) * 2;
 
     const riskTag =
       riskScore > 20
@@ -982,6 +1092,10 @@ function renderFXTable() {
     const mispChg = mispricing > 0 ? '+' : '';
     const mispClass = Math.abs(mispricing) > 0.15
       ? (mispricing > 0 ? 'neg-val' : 'pos-val')
+      : '';
+
+    const zClass = Math.abs(zScore) > 1.25
+      ? (zScore > 0 ? 'neg-val' : 'pos-val')
       : '';
 
     return `
@@ -1001,6 +1115,7 @@ function renderFXTable() {
           </div>
         </td>
         <td class="${mispClass}" style="font-family:var(--mono);font-size:11px;">${mispChg}${mispricing.toFixed(3)}</td>
+        <td class="${zClass}" style="font-family:var(--mono);font-size:11px;">${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}</td>
         <td>${riskTag}</td>
       </tr>
     `;
@@ -1023,6 +1138,7 @@ function renderFXTable() {
           <th>1D CHG</th>
           <th>MACRO SCORE</th>
           <th>MISPRICE Δ</th>
+          <th>Z SCORE</th>
           <th>RISK</th>
         </tr>
       </thead>
@@ -1489,25 +1605,30 @@ function renderSignalPanel() {
   const signals = CURRENCIES.map(c => {
     const score = computeMacroScore(c);
     const misp = computeMispricing(c);
+    const zScore = computeMispricingZScore(c);
+    const drivers = getDriverBreakdown(c);
+
+    const topDriver = drivers[0]?.text || 'no clear driver';
+    const secondDriver = drivers[1]?.text || 'no secondary driver';
 
     let dir, dirClass, text;
 
     if (score > t.shortScore && misp > t.mispricingTrigger) {
       dir = 'SHORT EM';
       dirClass = 'dir-short';
-      text = `Macro headwinds from USD and rates. FX looks rich relative to the model signal.`;
+      text = `Bearish macro setup. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)} suggests FX still looks rich.`;
     } else if (score < t.longScore && misp < -t.mispricingTrigger) {
       dir = 'LONG EM';
       dirClass = 'dir-long';
-      text = `FX looks cheap relative to macro inputs. Commodity support or softer USD improves the setup.`;
-    } else if (Math.abs(misp) > t.watchTrigger) {
+      text = `Supportive macro setup. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)} suggests FX still looks cheap.`;
+    } else if (Math.abs(zScore) > t.watchZScore) {
       dir = 'WATCH';
       dirClass = 'dir-neutral';
-      text = `Mispricing detected (${misp > 0 ? '+' : ''}${misp.toFixed(3)}%) but broad macro score is not extreme.`;
+      text = `Move looks stretched on a standardised basis. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}.`;
     } else {
       dir = 'NEUTRAL';
       dirClass = 'dir-neutral';
-      text = `FX is broadly in line with current macro drivers. No strong asymmetry.`;
+      text = `No strong asymmetry. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}.`;
     }
 
     return `
