@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>EM FX Macro Dashboard</title>
+<title>LatAm FX Macro Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 
 <style>
@@ -19,7 +19,6 @@
     --text2: #8b909e;
     --text3: #555a66;
     --green: #00d4a0;
-    --green2: #00a87e;
     --red: #ff4757;
     --amber: #ffc107;
     --blue: #3b82f6;
@@ -42,8 +41,9 @@
   .topbar {
     background: var(--bg2);
     border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 52px;
+    padding: 0 14px;
+    height: 48px;
+  
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -55,7 +55,7 @@
   .topbar-left {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
   }
 
   .logo {
@@ -438,8 +438,9 @@
     flex-shrink: 0;
   }
 
-  .dir-long  { background: rgba(0,212,160,0.12); color: var(--green); }
-  .dir-short { background: rgba(255,71,87,0.12); color: var(--red); }
+  .dir-bullish { background: rgba(0,212,160,0.12); color: var(--green); }
+  .dir-bearish { background: rgba(255,71,87,0.12); color: var(--red); }
+  .dir-watch { background: rgba(255,193,7,0.15); color: var(--amber); }
   .dir-neutral { background: rgba(139,144,158,0.1); color: var(--text3); }
 
   .heatmap-card { grid-column: span 3; }
@@ -560,7 +561,7 @@
 <body>
   <div class="topbar">
     <div class="topbar-left">
-      <div class="logo" id="dashboard-logo">EM·FX <span>/ MACRO MONITOR</span></div>
+      <div class="logo" id="dashboard-logo">LATAM·FX <span>/ MACRO MONITOR</span></div>
       <div class="status-label">
         <span class="status-dot" id="live-dot"></span>
         <span id="live-label">LOADING</span>
@@ -579,7 +580,7 @@
   <div class="main">
     <div class="card fx-grid">
       <div class="card-header">
-        <span class="card-title">EM FX vs USD — Live Rates & Macro Score</span>
+        <span class="card-title">LatAm FX vs USD</span>
         <span class="card-badge" id="fx-timestamp">—</span>
       </div>
       <div class="card-body" style="padding:8px 16px;">
@@ -599,11 +600,11 @@
       </div>
     </div>
 
-    <div class="section-label" style="grid-column:span 3;">CORRELATION ANALYSIS & RISK SIGNALS</div>
+    <div class="section-label" style="grid-column:span 3;">CORRELATION VIEW AND SIGNALS</div>
 
     <div class="card corr-card">
       <div class="card-header">
-        <span class="card-title">EM FX / Macro Correlation</span>
+        <span class="card-title">FX / Macro Correlation</span>
         <span class="card-badge">INPUTS</span>
       </div>
       <div class="card-body" id="corr-matrix-wrap">
@@ -613,8 +614,8 @@
 
     <div class="card chart-card">
       <div class="card-header">
-        <span class="card-title">DXY vs EM FX Performance — Illustrative 30D Path</span>
-        <span class="card-badge">VISUAL</span>
+        <span class="card-title">DXY vs EM FX Performance</span>
+        <span class="card-badge">ILLUSTRATIVE</span>
       </div>
       <div class="card-body">
         <div class="chart-wrap">
@@ -623,22 +624,22 @@
       </div>
     </div>
 
-    <div class="section-label" style="grid-column:span 3;">MISPRICING HEATMAP — FX vs MACRO FAIR VALUE</div>
+    <div class="section-label" style="grid-column:span 3;">MACRO GAP HEATMAP</div>
 
     <div class="card heatmap-card">
       <div class="card-header">
-        <span class="card-title">Mispricing & Risk Asymmetry Matrix</span>
+        <span class="card-title">How FX Compares with Macro</span>
         <span class="card-badge" id="hm-timestamp">—</span>
       </div>
       <div class="card-body" id="heatmap-wrap">
-        <div class="loading-text"><div class="spinner"></div> Computing fair value deviations…</div>
+        <div class="loading-text"><div class="spinner"></div> Building heatmap…</div>
       </div>
     </div>
 
     <div class="card signal-card">
       <div class="card-header">
-        <span class="card-title">System Signals</span>
-        <span class="card-badge">RULES</span>
+        <span class="card-title">Signals</span>
+        <span class="card-badge">MACRO</span>
       </div>
       <div class="card-body" style="padding:8px 16px;" id="signal-panel">
         <div class="loading-text" style="padding:20px 0;"><div class="spinner"></div></div>
@@ -647,7 +648,7 @@
 
     <div class="card" style="grid-column:span 2;">
       <div class="card-header">
-        <span class="card-title">US Treasury Yields — Illustrative Historical Context</span>
+        <span class="card-title">US Treasury Yields</span>
         <span class="card-badge">10Y / 2Y</span>
       </div>
       <div class="card-body">
@@ -670,10 +671,10 @@
 
 <script>
 /* ============================================================
-   1. USER SETTINGS
+   1. SETTINGS
 ============================================================ */
 const SETTINGS = {
-  dashboardTitleHTML: `EM·FX <span>/ MACRO MONITOR</span>`,
+  dashboardTitleHTML: `LATAM·FX <span>/ MACRO MONITOR</span>`,
   autoRefreshMs: 90000,
   useLiveFX: true,
   useLiveMacro: true
@@ -681,7 +682,7 @@ const SETTINGS = {
 
 /* ============================================================
    2. USER DATA
-   This is the section you edit most often on GitHub
+   Edit this section most often
 ============================================================ */
 const USER_DATA = {
   currencies: [
@@ -702,10 +703,10 @@ const USER_DATA = {
 
   macroFallback: {
     US10Y:  { value: 4.38, prev: 4.41 },
-    US2Y:   { value: 4.71, prev: 4.74 },
-    DXY:    { value: 104.20, prev: 104.80 },
-    OIL:    { value: 78.40, prev: 77.90 },
-    COPPER: { value: 4.120, prev: 4.080 }
+    US2Y:   { value: 4.04, prev: 4.06 },
+    DXY:    { value: 99.83, prev: 99.83 },
+    OIL:    { value: 94.59, prev: 94.59 },
+    COPPER: { value: 5.510, prev: 5.510 }
   },
 
   correlationMatrix: {
@@ -717,10 +718,10 @@ const USER_DATA = {
   },
 
   thresholds: {
-    shortScore: 62,
-    longScore: 38,
-    mispricingTrigger: 0.10,
-    watchZScore: 1.25
+    bullishScore: 45,
+    bearishScore: 55,
+    smallGap: 1.0,
+    largeGap: 3.0
   }
 };
 
@@ -762,16 +763,16 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function mean(arr) {
-  if (!arr.length) return 0;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
+function getGapLabel(value) {
+  const abs = Math.abs(value);
+  if (abs < USER_DATA.thresholds.smallGap) return 'In line';
+  if (abs < USER_DATA.thresholds.largeGap) return 'Mild gap';
+  return 'Large gap';
 }
 
-function stdDev(arr) {
-  if (!arr.length) return 0;
-  const m = mean(arr);
-  const variance = arr.reduce((acc, x) => acc + (x - m) ** 2, 0) / arr.length;
-  return Math.sqrt(variance);
+function getGapClass(value) {
+  if (Math.abs(value) < USER_DATA.thresholds.smallGap) return '';
+  return value > 0 ? 'neg-val' : 'pos-val';
 }
 
 /* ============================================================
@@ -881,34 +882,34 @@ function computeMacroScore(currency) {
   const dxyMom = safePercentChange(dxy.value, dxy.prev);
   score += dxyMom * 8 * beta;
 
-  score += (y10.value - 4.0) * 6;
+  score += (y10.value - 4.0) * 5;
 
   if (y2) {
     const spread = y10.value - y2.value;
-    if (spread < 0) score += Math.abs(spread) * 10;
+    if (spread < 0) score += Math.abs(spread) * 8;
   }
 
   if (commodity === 'OIL' && oil) {
     const oilMom = safePercentChange(oil.value, oil.prev);
-    score -= oilMom * 5 * beta;
+    score -= oilMom * 4.5 * beta;
   }
 
   if (commodity === 'CU' && copper) {
     const cuMom = safePercentChange(copper.value, copper.prev);
-    score -= cuMom * 5 * beta;
+    score -= cuMom * 4.5 * beta;
   }
 
   return clamp(score, 0, 100);
 }
 
-function computeMispricing(currency) {
+function computeMacroGap(currency) {
   const d = state.fx[currency.code];
   if (!d) return 0;
 
   const score = computeMacroScore(currency);
   const fxChg = safePercentChange(d.rate, d.prev);
-
   const expectedFxChg = (score - 50) * 0.15;
+
   return fxChg - expectedFxChg;
 }
 
@@ -931,7 +932,7 @@ function getDriverBreakdown(currency) {
   }
 
   if (y10) {
-    const yieldImpact = (y10.value - 4.0) * 6;
+    const yieldImpact = (y10.value - 4.0) * 5;
     drivers.push({
       name: 'US10Y',
       impact: yieldImpact,
@@ -941,7 +942,7 @@ function getDriverBreakdown(currency) {
 
   if (y10 && y2) {
     const spread = y10.value - y2.value;
-    const curveImpact = spread < 0 ? Math.abs(spread) * 10 : 0;
+    const curveImpact = spread < 0 ? Math.abs(spread) * 8 : 0;
     drivers.push({
       name: 'Curve',
       impact: curveImpact,
@@ -955,7 +956,7 @@ function getDriverBreakdown(currency) {
     const oilMom = safePercentChange(oil.value, oil.prev);
     drivers.push({
       name: 'Oil',
-      impact: -(oilMom * 5 * currency.beta),
+      impact: -(oilMom * 4.5 * currency.beta),
       text: `oil ${oilMom >= 0 ? 'up' : 'down'} ${Math.abs(oilMom).toFixed(2)}%`
     });
   }
@@ -964,7 +965,7 @@ function getDriverBreakdown(currency) {
     const cuMom = safePercentChange(copper.value, copper.prev);
     drivers.push({
       name: 'Copper',
-      impact: -(cuMom * 5 * currency.beta),
+      impact: -(cuMom * 4.5 * currency.beta),
       text: `copper ${cuMom >= 0 ? 'up' : 'down'} ${Math.abs(cuMom).toFixed(2)}%`
     });
   }
@@ -973,39 +974,25 @@ function getDriverBreakdown(currency) {
   return drivers;
 }
 
-function computeMispricingZScore(currency) {
-  const currentMispricing = computeMispricing(currency);
+function classifySignal(currency) {
+  const score = computeMacroScore(currency);
+  const gap = computeMacroGap(currency);
+  const absGap = Math.abs(gap);
+  const t = USER_DATA.thresholds;
 
-  const dxy = state.macro.DXY;
-  const y10 = state.macro.US10Y;
-  const oil = state.macro.OIL;
-  const copper = state.macro.COPPER;
-
-  const history = [];
-
-  for (let i = 0; i < 20; i++) {
-    const dxyShock = dxy ? safePercentChange(dxy.value, dxy.prev) + (Math.random() - 0.5) * 0.6 : 0;
-    const yShock = y10 ? (y10.value - 4.0) + (Math.random() - 0.5) * 0.25 : 0;
-    const oilShock = oil ? safePercentChange(oil.value, oil.prev) + (Math.random() - 0.5) * 1.0 : 0;
-    const cuShock = copper ? safePercentChange(copper.value, copper.prev) + (Math.random() - 0.5) * 1.0 : 0;
-    const fxNoise = (Math.random() - 0.5) * 1.2;
-
-    let syntheticScore = 50 + dxyShock * 8 * currency.beta + yShock * 6;
-
-    if (currency.commodity === 'OIL') syntheticScore -= oilShock * 5 * currency.beta;
-    if (currency.commodity === 'CU') syntheticScore -= cuShock * 5 * currency.beta;
-
-    const expectedFx = (syntheticScore - 50) * 0.15;
-    const realisedFx = expectedFx + fxNoise;
-    const syntheticMispricing = realisedFx - expectedFx;
-
-    history.push(syntheticMispricing);
+  if (score >= t.bearishScore && gap > t.smallGap) {
+    return { label: 'Bearish EM', className: 'dir-bearish' };
   }
 
-  const sigma = stdDev(history);
-  if (!sigma || sigma < 1e-6) return 0;
+  if (score <= t.bullishScore && gap < -t.smallGap) {
+    return { label: 'Bullish EM', className: 'dir-bullish' };
+  }
 
-  return (currentMispricing - mean(history)) / sigma;
+  if (absGap >= t.largeGap) {
+    return { label: 'Watch', className: 'dir-watch' };
+  }
+
+  return { label: 'Neutral', className: 'dir-neutral' };
 }
 
 /* ============================================================
@@ -1075,28 +1062,21 @@ function renderFXTable() {
     const chgClass = chg > 0 ? 'neg-val' : chg < 0 ? 'pos-val' : '';
 
     const score = computeMacroScore(c);
-    const mispricing = computeMispricing(c);
-    const zScore = computeMispricingZScore(c);
-    const riskScore = Math.abs(score - 50) + Math.abs(mispricing) * 10 + Math.abs(zScore) * 2;
+    const gap = computeMacroGap(c);
+    const gapLabel = getGapLabel(gap);
+    const gapClass = getGapClass(gap);
+
+    const riskScore = Math.abs(score - 50) + Math.abs(gap) * 3;
 
     const riskTag =
-      riskScore > 20
+      riskScore > 18
         ? `<span class="risk-tag risk-high">HIGH</span>`
         : riskScore > 10
         ? `<span class="risk-tag risk-med">MED</span>`
         : `<span class="risk-tag risk-low">LOW</span>`;
 
-    const barColor = score > 60 ? '#ff4757' : score < 40 ? '#00d4a0' : '#ffc107';
+    const barColor = score > 55 ? '#ff4757' : score < 45 ? '#00d4a0' : '#ffc107';
     const barPct = score.toFixed(0);
-
-    const mispChg = mispricing > 0 ? '+' : '';
-    const mispClass = Math.abs(mispricing) > 0.15
-      ? (mispricing > 0 ? 'neg-val' : 'pos-val')
-      : '';
-
-    const zClass = Math.abs(zScore) > 1.25
-      ? (zScore > 0 ? 'neg-val' : 'pos-val')
-      : '';
 
     return `
       <tr>
@@ -1114,8 +1094,8 @@ function renderFXTable() {
             <span style="font-size:11px;color:${barColor};min-width:26px;">${barPct}</span>
           </div>
         </td>
-        <td class="${mispClass}" style="font-family:var(--mono);font-size:11px;">${mispChg}${mispricing.toFixed(3)}</td>
-        <td class="${zClass}" style="font-family:var(--mono);font-size:11px;">${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}</td>
+        <td class="${gapClass}" style="font-family:var(--mono);font-size:11px;">${gap > 0 ? '+' : ''}${gap.toFixed(3)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text2);">${gapLabel}</td>
         <td>${riskTag}</td>
       </tr>
     `;
@@ -1133,13 +1113,13 @@ function renderFXTable() {
     <table class="fx-table">
       <thead>
         <tr>
-          <th style="width:160px;">PAIR</th>
-          <th>RATE</th>
-          <th>1D CHG</th>
-          <th>MACRO SCORE</th>
-          <th>MISPRICE Δ</th>
-          <th>Z SCORE</th>
-          <th>RISK</th>
+          <th style="width:160px;">Pair</th>
+          <th>Rate</th>
+          <th>1D Chg</th>
+          <th>Macro Score</th>
+          <th>Macro Gap</th>
+          <th>Read</th>
+          <th>Risk</th>
         </tr>
       </thead>
       <tbody>
@@ -1156,36 +1136,36 @@ function renderMacroDrivers() {
   const items = [
     {
       label: 'US 10Y Treasury',
-      sub: '10-year benchmark yield',
+      sub: '10 year benchmark yield',
       key: 'US10Y',
       suffix: '%',
       decimals: 3
     },
     {
       label: 'US 2Y Treasury',
-      sub: 'Short-end policy proxy',
+      sub: 'Short end policy proxy',
       key: 'US2Y',
       suffix: '%',
       decimals: 3
     },
     {
       label: 'DXY Index',
-      sub: 'USD broad basket',
+      sub: 'Broad dollar basket',
       key: 'DXY',
       suffix: '',
       decimals: 2
     },
     {
       label: 'WTI Crude Oil',
-      sub: 'USD/bbl · MXN/COP driver',
+      sub: 'Important for MXN and COP',
       key: 'OIL',
       suffix: '',
       decimals: 2,
       prefix: '$'
     },
     {
-      label: 'Copper HG',
-      sub: 'USD/lb · CLP/PEN driver',
+      label: 'Copper',
+      sub: 'Important for CLP and PEN',
       key: 'COPPER',
       suffix: '/lb',
       decimals: 3,
@@ -1223,12 +1203,12 @@ function renderMacroDrivers() {
   const spreadHtml = spread !== null ? `
     <div class="macro-item">
       <div>
-        <div class="macro-label">Yield Curve (10Y-2Y)</div>
-        <div class="macro-sub">Inversion signal for EM risk-off</div>
+        <div class="macro-label">Yield Curve (10Y minus 2Y)</div>
+        <div class="macro-sub">Useful for broad risk tone</div>
       </div>
       <div class="macro-value-wrap">
         <div class="macro-value ${spread < 0 ? 'neg-val' : 'pos-val'}">${spread > 0 ? '+' : ''}${spread.toFixed(3)}%</div>
-        <div class="macro-chg" style="color:var(--text3);">${spread < 0 ? 'INVERTED — RISK OFF' : 'NORMAL'}</div>
+        <div class="macro-chg" style="color:var(--text3);">${spread < 0 ? 'Inverted' : 'Normal'}</div>
       </div>
     </div>
   ` : '';
@@ -1293,7 +1273,7 @@ function renderDXYChart() {
   if (!ctx) return;
   if (state.charts.dxy) state.charts.dxy.destroy();
 
-  const dxy0 = state.macro.DXY?.value || 104.2;
+  const dxy0 = state.macro.DXY?.value || 100;
   const labels = [];
   const dxyData = [];
   const emBaskets = { MXN: [], BRL: [], COP: [] };
@@ -1412,7 +1392,7 @@ function renderYieldsChart() {
   const data2y = [];
   const today = new Date();
   let v10 = (state.macro.US10Y?.value || 4.38) - 0.15;
-  let v2 = (state.macro.US2Y?.value || 4.71) - 0.15;
+  let v2 = (state.macro.US2Y?.value || 4.04) - 0.15;
 
   for (let i = 60; i >= 0; i--) {
     const d = new Date(today);
@@ -1530,11 +1510,11 @@ function renderHeatmap() {
   function cellColor(val, isScore) {
     if (isScore) {
       const d = val - 50;
-      if (d > 20)  return { bg: 'rgba(255,71,87,0.30)', col: '#ff6470', txt: val.toFixed(0) };
-      if (d > 8)   return { bg: 'rgba(255,71,87,0.18)', col: '#ff4757', txt: val.toFixed(0) };
-      if (d > -8)  return { bg: 'rgba(139,144,158,0.1)', col: '#8b909e', txt: val.toFixed(0) };
-      if (d > -20) return { bg: 'rgba(0,212,160,0.15)', col: '#00d4a0', txt: val.toFixed(0) };
-      return { bg: 'rgba(0,212,160,0.28)', col: '#00e8b0', txt: val.toFixed(0) };
+      if (d > 12)  return { bg: 'rgba(255,71,87,0.22)', col: '#ff6470', txt: val.toFixed(0) };
+      if (d > 4)   return { bg: 'rgba(255,71,87,0.12)', col: '#ff4757', txt: val.toFixed(0) };
+      if (d > -4)  return { bg: 'rgba(139,144,158,0.1)', col: '#8b909e', txt: val.toFixed(0) };
+      if (d > -12) return { bg: 'rgba(0,212,160,0.12)', col: '#00d4a0', txt: val.toFixed(0) };
+      return { bg: 'rgba(0,212,160,0.22)', col: '#00e8b0', txt: val.toFixed(0) };
     }
 
     const s = (val > 0 ? '+' : '') + val.toFixed(2);
@@ -1558,7 +1538,7 @@ function renderHeatmap() {
       const val = matrix[c.code][d];
       const isScore = d === 'RISK SCORE';
       const { bg, col, txt } = cellColor(val, isScore);
-      const sub = isScore ? (val > 60 ? 'BEAR' : val < 40 ? 'BULL' : 'NEUT') : '';
+      const sub = isScore ? (val > 55 ? 'Bearish' : val < 45 ? 'Bullish' : 'Neutral') : '';
 
       return `
         <div class="hm-cell" style="background:${bg};">
@@ -1579,9 +1559,7 @@ function renderHeatmap() {
   html += `
     <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
       <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">
-        Heatmap shows deviation of FX move vs macro-implied fair value.
-        <span style="color:var(--green);">Green = EM outperforming signal</span> ·
-        <span style="color:var(--red);">Red = EM underperforming vs macro</span>
+        Green means FX looks stronger than the macro backdrop. Red means FX looks weaker than the macro backdrop.
       </span>
     </div>
   `;
@@ -1600,42 +1578,32 @@ function renderHeatmap() {
    13. RENDER: SIGNALS
 ============================================================ */
 function renderSignalPanel() {
-  const t = USER_DATA.thresholds;
-
   const signals = CURRENCIES.map(c => {
     const score = computeMacroScore(c);
-    const misp = computeMispricing(c);
-    const zScore = computeMispricingZScore(c);
+    const gap = computeMacroGap(c);
     const drivers = getDriverBreakdown(c);
-
     const topDriver = drivers[0]?.text || 'no clear driver';
     const secondDriver = drivers[1]?.text || 'no secondary driver';
+    const signal = classifySignal(c);
+    const gapLabel = getGapLabel(gap);
 
-    let dir, dirClass, text;
+    let text = '';
 
-    if (score > t.shortScore && misp > t.mispricingTrigger) {
-      dir = 'SHORT EM';
-      dirClass = 'dir-short';
-      text = `Bearish macro setup. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)} suggests FX still looks rich.`;
-    } else if (score < t.longScore && misp < -t.mispricingTrigger) {
-      dir = 'LONG EM';
-      dirClass = 'dir-long';
-      text = `Supportive macro setup. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)} suggests FX still looks cheap.`;
-    } else if (Math.abs(zScore) > t.watchZScore) {
-      dir = 'WATCH';
-      dirClass = 'dir-neutral';
-      text = `Move looks stretched on a standardised basis. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}.`;
+    if (signal.label === 'Bearish EM') {
+      text = `Macro looks unfriendly here. Main driver: ${topDriver}. Secondary: ${secondDriver}. FX still looks a bit rich versus that backdrop. ${gapLabel}.`;
+    } else if (signal.label === 'Bullish EM') {
+      text = `Macro looks more supportive here. Main driver: ${topDriver}. Secondary: ${secondDriver}. FX still looks a bit cheap versus that backdrop. ${gapLabel}.`;
+    } else if (signal.label === 'Watch') {
+      text = `Move looks worth watching. Main driver: ${topDriver}. Secondary: ${secondDriver}. Price action and macro are not fully lining up. ${gapLabel}.`;
     } else {
-      dir = 'NEUTRAL';
-      dirClass = 'dir-neutral';
-      text = `No strong asymmetry. Main driver: ${topDriver}. Secondary: ${secondDriver}. Mispricing z score ${zScore >= 0 ? '+' : ''}${zScore.toFixed(2)}.`;
+      text = `Nothing especially strong here. Main driver: ${topDriver}. Secondary: ${secondDriver}. FX looks broadly in line with macro.`;
     }
 
     return `
       <div class="signal-item">
         <span class="signal-currency">USD/${c.code}</span>
         <span class="signal-text">${text}</span>
-        <span class="signal-dir ${dirClass}">${dir}</span>
+        <span class="signal-dir ${signal.className}">${signal.label}</span>
       </div>
     `;
   }).join('');
@@ -1649,7 +1617,7 @@ function renderSignalPanel() {
 function renderCommodities() {
   const items = [
     { label: 'WTI Crude', key: 'OIL', prefix: '$', suffix: '/bbl', decimals: 2 },
-    { label: 'Copper HG', key: 'COPPER', prefix: '$', suffix: '/lb', decimals: 3 },
+    { label: 'Copper', key: 'COPPER', prefix: '$', suffix: '/lb', decimals: 3 },
     {
       label: 'Brent (est)',
       key: 'BRENT',
