@@ -51,4 +51,4 @@ It compares where EM FX is trading to what macro suggests it should be doing. If
 This is a macro monitoring tool, not a full trading system.  
 It is designed to organise macro information in a cleaner and more structured way.
 
-Please note that with a Live API paid service, this could be transformed into fully functional. Consider this as a demo concept using free data
+Please note that with a Live API paid service, this could be transformed into fully functional. Consider this as a demo concept using free data.
