@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EM FX Macro Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #111318;
+    --bg3: #181b21;
+    --border: #1e2229;
+    --border2: #252a33;
+    --text: #e8eaf0;
+    --text2: #8b909e;
+    --text3: #555a66;
+    --green: #00d4a0;
+    --green2: #00a87e;
+    --red: #ff4757;
+    --red2: #cc2e3f;
+    --amber: #ffc107;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--text2); font-weight: 400; }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+    display: inline-block;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .status-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .last-update {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .refresh-btn:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .ticker-strip {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    overflow: hidden;
+  }
+
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ticker-sym {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .ticker-price {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .ticker-chg {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+
+  .ticker-chg.pos { background: rgba(0,212,160,0.12); color: var(--green); }
+  .ticker-chg.neg { background: rgba(255,71,87,0.12); color: var(--red); }
+  .ticker-chg.neu { background: rgba(139,144,158,0.1); color: var(--text3); }
+
+  .ticker-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
+
+  .main {
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+  }
+
+  .card-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--bg3);
+    color: var(--text3);
+    border: 1px solid var(--border2);
+  }
+
+  .card-body { padding: 16px; }
+
+  .fx-grid { grid-column: span 2; }
+
+  .fx-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .fx-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    text-align: right;
+    padding: 4px 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  .fx-table th:first-child { text-align: left; padding-left: 0; }
+  .fx-table th:last-child { padding-right: 0; }
+
+  .fx-table td {
+    padding: 9px 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .fx-table td:first-child { text-align: left; padding-left: 0; }
+  .fx-table td:last-child { padding-right: 0; }
+  .fx-table tr:last-child td { border-bottom: none; }
+
+  .fx-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .pair-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    display: block;
+  }
+
+  .pair-full {
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 400;
+  }
+
+  .pos-val { color: var(--green); }
+  .neg-val { color: var(--red); }
+
+  .score-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .score-bar {
+    width: 60px;
+    height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  .risk-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+
+  .risk-high { background: rgba(255,71,87,0.15); color: var(--red); }
+  .risk-med  { background: rgba(255,193,7,0.15); color: var(--amber); }
+  .risk-low  { background: rgba(0,212,160,0.12); color: var(--green); }
+
+  .macro-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .macro-item:last-child { border-bottom: none; }
+
+  .macro-label {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .macro-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .macro-value-wrap {
+    text-align: right;
+  }
+
+  .macro-value {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .macro-chg {
+    font-family: var(--mono);
+    font-size: 10px;
+    margin-top: 2px;
+  }
+
+  .chart-card { grid-column: span 2; }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 220px;
+  }
+
+  .corr-card { grid-column: span 1; }
+
+  .corr-matrix {
+    display: grid;
+    gap: 2px;
+  }
+
+  .corr-row {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .corr-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    width: 38px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 4px;
+  }
+
+  .corr-cell {
+    width: 38px;
+    height: 30px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    cursor: default;
+    transition: opacity 0.15s;
+  }
+
+  .corr-cell:hover { opacity: 0.8; }
+
+  .corr-header-row {
+    display: flex;
+    gap: 2px;
+    margin-left: 42px;
+    margin-bottom: 2px;
+  }
+
+  .corr-col-label {
+    width: 38px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+
+  .signal-card { grid-column: span 1; }
+
+  .signal-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .signal-item:last-child { border-bottom: none; }
+
+  .signal-currency {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 48px;
+  }
+
+  .signal-text {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .signal-dir {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .dir-long  { background: rgba(0,212,160,0.12); color: var(--green); }
+  .dir-short { background: rgba(255,71,87,0.12); color: var(--red); }
+  .dir-neutral { background: rgba(139,144,158,0.1); color: var(--text3); }
+
+  .heatmap-card { grid-column: span 3; }
+
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: 120px repeat(5, 1fr);
+    gap: 2px;
+  }
+
+  .hm-label-cell {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    padding: 8px 8px 8px 0;
+    display: flex;
+    align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .hm-cell {
+    height: 42px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: default;
+    transition: opacity 0.15s;
+  }
+
+  .hm-cell:hover { opacity: 0.75; }
+
+  .hm-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .hm-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    opacity: 0.7;
+  }
+
+  .hm-header-cell {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    padding: 6px 4px 4px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .spinner {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--border2);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr 1fr; }
+    .fx-grid, .chart-card, .heatmap-card { grid-column: span 2; }
+    .corr-card, .signal-card { grid-column: span 2; }
+  }
+
+  @media (max-width: 600px) {
+    .main { grid-template-columns: 1fr; }
+    .fx-grid, .chart-card, .heatmap-card, .corr-card, .signal-card { grid-column: span 1; }
+    .ticker-strip { gap: 16px; overflow-x: auto; }
+  }
+
+  .section-label {
+    grid-column: span 3;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    padding: 4px 0 0;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+</style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo" id="dashboard-logo">EM·FX <span>/ MACRO MONITOR</span></div>
+      <div class="status-label">
+        <span class="status-dot" id="live-dot"></span>
+        <span id="live-label">LOADING</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span class="last-update" id="last-update">—</span>
+      <button class="refresh-btn" onclick="loadAllData()">↺ REFRESH</button>
+    </div>
+  </div>
+
+  <div class="ticker-strip" id="ticker-strip">
+    <div class="loading-text"><div class="spinner"></div> Loading market data…</div>
+  </div>
+
+  <div class="main">
+    <div class="card fx-grid">
+      <div class="card-header">
+        <span class="card-title">EM FX vs USD — Live Rates & Macro Score</span>
+        <span class="card-badge" id="fx-timestamp">—</span>
+      </div>
+      <div class="card-body" style="padding:8px 16px;">
+        <div id="fx-table-wrap">
+          <div class="loading-text" style="padding:20px 0;"><div class="spinner"></div> Fetching FX rates…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Key Macro Drivers</span>
+        <span class="card-badge">LIVE</span>
+      </div>
+      <div class="card-body" style="padding:8px 16px;" id="macro-drivers">
+        <div class="loading-text" style="padding:20px 0;"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div class="section-label" style="grid-column:span 3;">CORRELATION ANALYSIS & RISK SIGNALS</div>
+
+    <div class="card corr-card">
+      <div class="card-header">
+        <span class="card-title">EM FX / Macro Correlation</span>
+        <span class="card-badge">INPUTS</span>
+      </div>
+      <div class="card-body" id="corr-matrix-wrap">
+        <div class="loading-text"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-header">
+        <span class="card-title">DXY vs EM FX Performance — Illustrative 30D Path</span>
+        <span class="card-badge">VISUAL</span>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap">
+          <canvas id="dxyChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="grid-column:span 3;">MISPRICING HEATMAP — FX vs MACRO FAIR VALUE</div>
+
+    <div class="card heatmap-card">
+      <div class="card-header">
+        <span class="card-title">Mispricing & Risk Asymmetry Matrix</span>
+        <span class="card-badge" id="hm-timestamp">—</span>
+      </div>
+      <div class="card-body" id="heatmap-wrap">
+        <div class="loading-text"><div class="spinner"></div> Computing fair value deviations…</div>
+      </div>
+    </div>
+
+    <div class="card signal-card">
+      <div class="card-header">
+        <span class="card-title">System Signals</span>
+        <span class="card-badge">RULES</span>
+      </div>
+      <div class="card-body" style="padding:8px 16px;" id="signal-panel">
+        <div class="loading-text" style="padding:20px 0;"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column:span 2;">
+      <div class="card-header">
+        <span class="card-title">US Treasury Yields — Illustrative Historical Context</span>
+        <span class="card-badge">10Y / 2Y</span>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap">
+          <canvas id="yieldsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Commodity Prices</span>
+        <span class="card-badge">LIVE</span>
+      </div>
+      <div class="card-body" style="padding:8px 16px;" id="commodity-panel">
+        <div class="loading-text" style="padding:20px 0;"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   1. USER SETTINGS
+   Edit these first
+============================================================ */
+const SETTINGS = {
+  dashboardTitleHTML: `EM·FX <span>/ MACRO MONITOR</span>`,
+  autoRefreshMs: 90000,
+  useLiveFX: true,
+  useLiveMacro: true
+};
+
+/* ============================================================
+   2. USER DATA
+   This is the only section you really need to touch on GitHub
+============================================================ */
+const USER_DATA = {
+  currencies: [
+    { code: 'MXN', name: 'Mexican Peso',   flag: '🇲🇽', commodity: 'OIL', beta: 1.4 },
+    { code: 'BRL', name: 'Brazilian Real', flag: '🇧🇷', commodity: 'OIL', beta: 1.6 },
+    { code: 'COP', name: 'Colombian Peso', flag: '🇨🇴', commodity: 'OIL', beta: 1.5 },
+    { code: 'CLP', name: 'Chilean Peso',   flag: '🇨🇱', commodity: 'CU',  beta: 1.3 },
+    { code: 'PEN', name: 'Peruvian Sol',   flag: '🇵🇪', commodity: 'CU',  beta: 1.1 }
+  ],
+
+  baseRates: {
+    MXN: 17.15,
+    BRL: 5.08,
+    COP: 4120,
+    CLP: 950,
+    PEN: 3.72
+  },
+
+  macroFallback: {
+    US10Y:  { value: 4.38, prev: 4.41 },
+    US2Y:   { value: 4.71, prev: 4.74 },
+    DXY:    { value: 104.20, prev: 104.80 },
+    OIL:    { value: 78.40, prev: 77.90 },
+    COPPER: { value: 4.120, prev: 4.080 }
+  },
+
+  correlationMatrix: {
+    MXN: { DXY: -0.82, '10Y': -0.61, OIL: 0.55, CU: 0.28 },
+    BRL: { DXY: -0.74, '10Y': -0.58, OIL: 0.42, CU: 0.38 },
+    COP: { DXY: -0.69, '10Y': -0.51, OIL: 0.71, CU: 0.19 },
+    CLP: { DXY: -0.71, '10Y': -0.45, OIL: 0.25, CU: 0.83 },
+    PEN: { DXY: -0.65, '10Y': -0.40, OIL: 0.31, CU: 0.72 }
+  },
+
+  thresholds: {
+    shortScore: 62,
+    longScore: 38,
+    mispricingTrigger: 0.10,
+    watchTrigger: 0.15
+  }
+};
+
+/* ============================================================
+   3. APP STATE
+============================================================ */
+const CURRENCIES = USER_DATA.currencies;
+
+let state = {
+  fx: {},
+  macro: {
+    US10Y: null,
+    US2Y: null,
+    DXY: null,
+    OIL: null,
+    COPPER: null
+  },
+  lastUpdate: null,
+  charts: {}
+};
+
+/* ============================================================
+   4. HELPERS
+============================================================ */
+function formatRate(code, value) {
+  return value.toFixed(code === 'COP' || code === 'CLP' ? 1 : 4);
+}
+
+function applyDashboardTitle() {
+  document.getElementById('dashboard-logo').innerHTML = SETTINGS.dashboardTitleHTML;
+}
+
+function safePercentChange(current, previous) {
+  if (previous === 0 || previous === null || previous === undefined) return 0;
+  return ((current - previous) / previous) * 100;
+}
+
+/* ============================================================
+   5. DATA FETCH
+============================================================ */
+async function fetchFXRates() {
+  if (!SETTINGS.useLiveFX) {
+    CURRENCIES.forEach(c => {
+      const v = USER_DATA.baseRates[c.code];
+      state.fx[c.code] = { rate: v, prev: v };
+    });
+    return;
+  }
+
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
+    if (!r.ok) throw new Error('FX API error');
+
+    const d = await r.json();
+
+    if (d && d.rates) {
+      CURRENCIES.forEach(c => {
+        if (d.rates[c.code]) {
+          const liveRate = d.rates[c.code];
+          state.fx[c.code] = {
+            rate: liveRate,
+            prev: USER_DATA.baseRates[c.code] || liveRate
+          };
+        }
+      });
+      return;
+    }
+  } catch (e) {
+    console.warn('FX fetch failed, using fallback rates:', e.message);
+  }
+
+  CURRENCIES.forEach(c => {
+    const v = USER_DATA.baseRates[c.code];
+    state.fx[c.code] = { rate: v, prev: v };
+  });
+}
+
+async function fetchMacroData() {
+  if (!SETTINGS.useLiveMacro) {
+    Object.entries(USER_DATA.macroFallback).forEach(([k, v]) => {
+      state.macro[k] = { ...v };
+    });
+    return;
+  }
+
+  const macroSymbols = {
+    '%5ETNX': 'US10Y',
+    '%5EFVX': 'US2Y',
+    'DX-Y.NYB': 'DXY',
+    'CL%3DF': 'OIL',
+    'HG%3DF': 'COPPER'
+  };
+
+  for (const [sym, key] of Object.entries(macroSymbols)) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d`;
+      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const r = await fetch(proxy, { signal: AbortSignal.timeout(4000) });
+
+      if (r.ok) {
+        const d = await r.json();
+        const parsed = JSON.parse(d.contents);
+        const result = parsed?.chart?.result?.[0];
+
+        if (result) {
+          const closes = result.indicators?.quote?.[0]?.close;
+          if (closes && closes.length >= 1) {
+            const last = closes[closes.length - 1];
+            const prev = closes.length >= 2 ? closes[closes.length - 2] : last;
+
+            if (last !== null && last !== undefined) {
+              state.macro[key] = { value: last, prev: prev || last };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      /* silent fail */
+    }
+  }
+
+  Object.entries(USER_DATA.macroFallback).forEach(([k, v]) => {
+    if (!state.macro[k]) state.macro[k] = { ...v };
+  });
+}
+
+/* ============================================================
+   6. MODEL LOGIC
+============================================================ */
+function computeMacroScore(currency) {
+  const { beta, commodity } = currency;
+  const dxy = state.macro.DXY;
+  const oil = state.macro.OIL;
+  const copper = state.macro.COPPER;
+  const y10 = state.macro.US10Y;
+  const y2 = state.macro.US2Y;
+
+  if (!dxy || !y10) return 50;
+
+  let score = 50;
+
+  const dxyMom = safePercentChange(dxy.value, dxy.prev);
+  score += dxyMom * 8 * beta;
+
+  score += (y10.value - 4.0) * 6;
+
+  if (y2) {
+    const spread = y10.value - y2.value;
+    if (spread < 0) score += Math.abs(spread) * 10;
+  }
+
+  if (commodity === 'OIL' && oil) {
+    const oilMom = safePercentChange(oil.value, oil.prev);
+    score -= oilMom * 5 * beta;
+  }
+
+  if (commodity === 'CU' && copper) {
+    const cuMom = safePercentChange(copper.value, copper.prev);
+    score -= cuMom * 5 * beta;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function computeMispricing(currency) {
+  const d = state.fx[currency.code];
+  if (!d) return 0;
+
+  const score = computeMacroScore(currency);
+  const fxChg = safePercentChange(d.rate, d.prev);
+
+  const expectedFxChg = (score - 50) * 0.15;
+  return fxChg - expectedFxChg;
+}
+
+/* ============================================================
+   7. RENDER: TICKER STRIP
+============================================================ */
+function renderTickerStrip() {
+  const items = [];
+
+  CURRENCIES.forEach(c => {
+    const d = state.fx[c.code];
+    if (!d) return;
+
+    const chg = safePercentChange(d.rate, d.prev);
+    const cls = Math.abs(chg) < 0.01 ? 'neu' : chg > 0 ? 'pos' : 'neg';
+    const sign = chg > 0 ? '+' : '';
+
+    items.push(`
+      <div class="ticker-item">
+        <span class="ticker-sym">USD/${c.code}</span>
+        <span class="ticker-price">${formatRate(c.code, d.rate)}</span>
+        <span class="ticker-chg ${cls}">${sign}${chg.toFixed(2)}%</span>
+      </div>
+    `);
+  });
+
+  items.push('<div class="ticker-divider"></div>');
+
+  const macroDisplay = [
+    { k: 'DXY', label: 'DXY', decimals: 2 },
+    { k: 'OIL', label: 'WTI', decimals: 2 },
+    { k: 'COPPER', label: 'COPPER', decimals: 3 },
+    { k: 'US10Y', label: 'US 10Y', decimals: 2, suffix: '%' },
+    { k: 'US2Y', label: 'US 2Y', decimals: 2, suffix: '%' }
+  ];
+
+  macroDisplay.forEach(m => {
+    const d = state.macro[m.k];
+    if (!d) return;
+
+    const chg = safePercentChange(d.value, d.prev);
+    const cls = Math.abs(chg) < 0.01 ? 'neu' : chg > 0 ? 'pos' : 'neg';
+    const sign = chg > 0 ? '+' : '';
+    const val = d.value.toFixed(m.decimals) + (m.suffix || '');
+
+    items.push(`
+      <div class="ticker-item">
+        <span class="ticker-sym">${m.label}</span>
+        <span class="ticker-price">${val}</span>
+        <span class="ticker-chg ${cls}">${sign}${chg.toFixed(2)}%</span>
+      </div>
+    `);
+  });
+
+  document.getElementById('ticker-strip').innerHTML = items.join('');
+}
+
+/* ============================================================
+   8. RENDER: FX TABLE
+============================================================ */
+function renderFXTable() {
+  const rows = CURRENCIES.map(c => {
+    const d = state.fx[c.code];
+    if (!d) return '';
+
+    const chg = safePercentChange(d.rate, d.prev);
+    const chgStr = (chg >= 0 ? '+' : '') + chg.toFixed(3) + '%';
+    const chgClass = chg > 0 ? 'neg-val' : chg < 0 ? 'pos-val' : '';
+
+    const score = computeMacroScore(c);
+    const mispricing = computeMispricing(c);
+    const riskScore = Math.abs(score - 50) + Math.abs(mispricing) * 10;
+
+    const riskTag =
+      riskScore > 20
+        ? `<span class="risk-tag risk-high">HIGH</span>`
+        : riskScore > 10
+        ? `<span class="risk-tag risk-med">MED</span>`
+        : `<span class="risk-tag risk-low">LOW</span>`;
+
+    const barColor = score > 60 ? '#ff4757' : score < 40 ? '#00d4a0' : '#ffc107';
+    const barPct = score.toFixed(0);
+
+    const mispChg = mispricing > 0 ? '+' : '';
+    const mispClass = Math.abs(mispricing) > 0.15
+      ? (mispricing > 0 ? 'neg-val' : 'pos-val')
+      : '';
+
+    return `
+      <tr>
+        <td>
+          <span class="pair-name">USD/${c.code}</span>
+          <span class="pair-full">${c.name}</span>
+        </td>
+        <td style="font-weight:500;">${formatRate(c.code, d.rate)}</td>
+        <td class="${chgClass}">${chgStr}</td>
+        <td>
+          <div class="score-bar-wrap">
+            <div class="score-bar">
+              <div class="score-bar-fill" style="width:${barPct}%;background:${barColor};"></div>
+            </div>
+            <span style="font-size:11px;color:${barColor};min-width:26px;">${barPct}</span>
+          </div>
+        </td>
+        <td class="${mispClass}" style="font-family:var(--mono);font-size:11px;">${mispChg}${mispricing.toFixed(3)}</td>
+        <td>${riskTag}</td>
+      </tr>
+    `;
+  });
+
+  const now = new Date().toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
+  document.getElementById('fx-timestamp').textContent = now;
+
+  document.getElementById('fx-table-wrap').innerHTML = `
+    <table class="fx-table">
+      <thead>
+        <tr>
+          <th style="width:160px;">PAIR</th>
+          <th>RATE</th>
+          <th>1D CHG</th>
+          <th>MACRO SCORE</th>
+          <th>MISPRICE Δ</th>
+          <th>RISK</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+/* ============================================================
+   9. RENDER: MACRO PANEL
+============================================================ */
+function renderMacroDrivers() {
+  const items = [
+    {
+      label: 'US 10Y Treasury',
+      sub: '10-year benchmark yield',
+      key: 'US10Y',
+      suffix: '%',
+      decimals: 3
+    },
+    {
+      label: 'US 2Y Treasury',
+      sub: 'Short-end policy proxy',
+      key: 'US2Y',
+      suffix: '%',
+      decimals: 3
+    },
+    {
+      label: 'DXY Index',
+      sub: 'USD broad basket',
+      key: 'DXY',
+      suffix: '',
+      decimals: 2
+    },
+    {
+      label: 'WTI Crude Oil',
+      sub: 'USD/bbl · MXN/COP driver',
+      key: 'OIL',
+      suffix: '',
+      decimals: 2,
+      prefix: '$'
+    },
+    {
+      label: 'Copper HG',
+      sub: 'USD/lb · CLP/PEN driver',
+      key: 'COPPER',
+      suffix: '/lb',
+      decimals: 3,
+      prefix: '$'
+    }
+  ];
+
+  const y10 = state.macro.US10Y?.value;
+  const y2 = state.macro.US2Y?.value;
+  const spread = (y10 !== undefined && y2 !== undefined) ? (y10 - y2) : null;
+
+  const html = items.map(item => {
+    const d = state.macro[item.key];
+    if (!d) return '';
+
+    const chg = safePercentChange(d.value, d.prev);
+    const chgStr = (chg >= 0 ? '+' : '') + chg.toFixed(3) + '%';
+    const chgClass = chg >= 0 ? 'pos-val' : 'neg-val';
+    const val = (item.prefix || '') + d.value.toFixed(item.decimals) + item.suffix;
+
+    return `
+      <div class="macro-item">
+        <div>
+          <div class="macro-label">${item.label}</div>
+          <div class="macro-sub">${item.sub}</div>
+        </div>
+        <div class="macro-value-wrap">
+          <div class="macro-value">${val}</div>
+          <div class="macro-chg ${chgClass}">${chgStr}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const spreadHtml = spread !== null ? `
+    <div class="macro-item">
+      <div>
+        <div class="macro-label">Yield Curve (10Y-2Y)</div>
+        <div class="macro-sub">Inversion signal for EM risk-off</div>
+      </div>
+      <div class="macro-value-wrap">
+        <div class="macro-value ${spread < 0 ? 'neg-val' : 'pos-val'}">${spread > 0 ? '+' : ''}${spread.toFixed(3)}%</div>
+        <div class="macro-chg" style="color:var(--text3);">${spread < 0 ? 'INVERTED — RISK OFF' : 'NORMAL'}</div>
+      </div>
+    </div>
+  ` : '';
+
+  document.getElementById('macro-drivers').innerHTML = html + spreadHtml;
+}
+
+/* ============================================================
+   10. RENDER: CORRELATION MATRIX
+============================================================ */
+function renderCorrelationMatrix() {
+  const pairs = CURRENCIES.map(c => c.code);
+  const macros = ['DXY', '10Y', 'OIL', 'CU'];
+
+  function getColor(v) {
+    if (v > 0.6)  return { bg: 'rgba(0,212,160,0.25)', color: '#00d4a0' };
+    if (v > 0.3)  return { bg: 'rgba(0,212,160,0.12)', color: '#00a87e' };
+    if (v > 0.1)  return { bg: 'rgba(139,144,158,0.1)', color: '#8b909e' };
+    if (v > -0.1) return { bg: 'rgba(139,144,158,0.05)', color: '#555a66' };
+    if (v > -0.3) return { bg: 'rgba(255,71,87,0.1)', color: '#cc2e3f' };
+    if (v > -0.6) return { bg: 'rgba(255,71,87,0.18)', color: '#ff4757' };
+    return { bg: 'rgba(255,71,87,0.28)', color: '#ff6470' };
+  }
+
+  const headerRow = `
+    <div class="corr-header-row">
+      ${macros.map(m => `<div class="corr-col-label">${m}</div>`).join('')}
+    </div>
+  `;
+
+  const rows = pairs.map(pair => {
+    const cells = macros.map(m => {
+      const v = USER_DATA.correlationMatrix[pair][m];
+      const { bg, color } = getColor(v);
+      const label = v.toFixed(2).replace('-0.00', '0.00');
+      return `<div class="corr-cell" style="background:${bg};color:${color};" title="${pair} vs ${m}: ${label}">${label}</div>`;
+    }).join('');
+
+    return `<div class="corr-row"><div class="corr-label">${pair}</div>${cells}</div>`;
+  }).join('');
+
+  const legend = `
+    <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;">
+        <span style="width:10px;height:10px;border-radius:2px;background:rgba(0,212,160,0.25);display:inline-block;"></span>Strong +
+      </span>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;">
+        <span style="width:10px;height:10px;border-radius:2px;background:rgba(255,71,87,0.25);display:inline-block;"></span>Strong −
+      </span>
+    </div>
+  `;
+
+  document.getElementById('corr-matrix-wrap').innerHTML =
+    headerRow + `<div class="corr-matrix">${rows}</div>` + legend;
+}
+
+/* ============================================================
+   11. RENDER: CHARTS
+============================================================ */
+function renderDXYChart() {
+  const ctx = document.getElementById('dxyChart');
+  if (!ctx) return;
+  if (state.charts.dxy) state.charts.dxy.destroy();
+
+  const dxy0 = state.macro.DXY?.value || 104.2;
+  const labels = [];
+  const dxyData = [];
+  const emBaskets = { MXN: [], BRL: [], COP: [] };
+
+  const today = new Date();
+  let dxyCur = dxy0 - 1.2;
+  let emCur = 100;
+
+  for (let i = 30; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    labels.push(d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }));
+
+    dxyCur += (Math.sin(i / 4) * 0.10);
+    dxyData.push(+dxyCur.toFixed(2));
+
+    emCur += -(Math.sin(i / 4) * 0.20);
+    emBaskets.MXN.push(+(100 + (emCur - 100) * 1.3).toFixed(2));
+    emBaskets.BRL.push(+(100 + (emCur - 100) * 1.1).toFixed(2));
+    emBaskets.COP.push(+(100 + (emCur - 100) * 1.4).toFixed(2));
+  }
+
+  state.charts.dxy = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'DXY',
+          data: dxyData,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.06)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          yAxisID: 'y1',
+          fill: true
+        },
+        {
+          label: 'MXN',
+          data: emBaskets.MXN,
+          borderColor: '#00d4a0',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          yAxisID: 'y2'
+        },
+        {
+          label: 'BRL',
+          data: emBaskets.BRL,
+          borderColor: '#ffc107',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          yAxisID: 'y2'
+        },
+        {
+          label: 'COP',
+          data: emBaskets.COP,
+          borderColor: '#8b5cf6',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          yAxisID: 'y2'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181b21',
+          titleColor: '#8b909e',
+          bodyColor: '#e8eaf0',
+          borderColor: '#252a33',
+          borderWidth: 1,
+          titleFont: { family: 'JetBrains Mono', size: 10 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#555a66', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 8 },
+          grid: { color: '#1e2229' },
+          border: { color: '#1e2229' }
+        },
+        y1: {
+          type: 'linear',
+          position: 'left',
+          ticks: { color: '#3b82f6', font: { family: 'JetBrains Mono', size: 9 } },
+          grid: { color: '#1e2229' },
+          border: { color: '#1e2229' }
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          ticks: { color: '#00d4a0', font: { family: 'JetBrains Mono', size: 9 } },
+          grid: { drawOnChartArea: false },
+          border: { color: '#1e2229' }
+        }
+      }
+    }
+  });
+}
+
+function renderYieldsChart() {
+  const ctx = document.getElementById('yieldsChart');
+  if (!ctx) return;
+  if (state.charts.yields) state.charts.yields.destroy();
+
+  const labels = [];
+  const data10y = [];
+  const data2y = [];
+  const today = new Date();
+  let v10 = (state.macro.US10Y?.value || 4.38) - 0.15;
+  let v2 = (state.macro.US2Y?.value || 4.71) - 0.15;
+
+  for (let i = 60; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    labels.push(i % 10 === 0 ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '');
+
+    v10 += Math.sin(i / 6) * 0.01;
+    v2 += Math.cos(i / 7) * 0.01;
+
+    data10y.push(+v10.toFixed(3));
+    data2y.push(+v2.toFixed(3));
+  }
+
+  state.charts.yields = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '10Y',
+          data: data10y,
+          borderColor: '#3b82f6',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: { target: 'origin', above: 'rgba(59,130,246,0.04)' }
+        },
+        {
+          label: '2Y',
+          data: data2y,
+          borderColor: '#ff4757',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181b21',
+          titleColor: '#8b909e',
+          bodyColor: '#e8eaf0',
+          borderColor: '#252a33',
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)}%`
+          },
+          titleFont: { family: 'JetBrains Mono', size: 10 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#555a66',
+            font: { family: 'JetBrains Mono', size: 9 },
+            callback: (val, idx) => labels[idx]
+          },
+          grid: { color: '#1e2229' },
+          border: { color: '#1e2229' }
+        },
+        y: {
+          ticks: {
+            color: '#8b909e',
+            font: { family: 'JetBrains Mono', size: 9 },
+            callback: v => v.toFixed(2) + '%'
+          },
+          grid: { color: '#1e2229' },
+          border: { color: '#1e2229' }
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   12. RENDER: HEATMAP
+============================================================ */
+function renderHeatmap() {
+  const drivers = ['vs DXY', 'vs OIL', 'vs COPPER', 'vs US10Y', 'RISK SCORE'];
+  const hm = document.getElementById('heatmap-wrap');
+  const matrix = {};
+
+  CURRENCIES.forEach(c => {
+    const d = state.fx[c.code];
+    const macro = state.macro;
+    if (!d) return;
+
+    const fxChg = safePercentChange(d.rate, d.prev);
+    const dxyChg = macro.DXY ? safePercentChange(macro.DXY.value, macro.DXY.prev) : 0;
+    const oilChg = macro.OIL ? safePercentChange(macro.OIL.value, macro.OIL.prev) : 0;
+    const cuChg = macro.COPPER ? safePercentChange(macro.COPPER.value, macro.COPPER.prev) : 0;
+    const y10Chg = macro.US10Y ? (macro.US10Y.value - macro.US10Y.prev) : 0;
+
+    const vsDXY = -fxChg - (-dxyChg * c.beta);
+    const vsOIL = (c.commodity === 'OIL' ? oilChg * 0.4 : oilChg * 0.15) - (-fxChg);
+    const vsCOPPER = (c.commodity === 'CU' ? cuChg * 0.4 : cuChg * 0.1) - (-fxChg);
+    const vsYield = -(-fxChg) - (-y10Chg * 3 * c.beta);
+    const riskScore = computeMacroScore(c);
+
+    matrix[c.code] = {
+      'vs DXY': vsDXY,
+      'vs OIL': vsOIL,
+      'vs COPPER': vsCOPPER,
+      'vs US10Y': vsYield,
+      'RISK SCORE': riskScore
+    };
+  });
+
+  function cellColor(val, isScore) {
+    if (isScore) {
+      const d = val - 50;
+      if (d > 20)  return { bg: 'rgba(255,71,87,0.30)', col: '#ff6470', txt: val.toFixed(0) };
+      if (d > 8)   return { bg: 'rgba(255,71,87,0.18)', col: '#ff4757', txt: val.toFixed(0) };
+      if (d > -8)  return { bg: 'rgba(139,144,158,0.1)', col: '#8b909e', txt: val.toFixed(0) };
+      if (d > -20) return { bg: 'rgba(0,212,160,0.15)', col: '#00d4a0', txt: val.toFixed(0) };
+      return { bg: 'rgba(0,212,160,0.28)', col: '#00e8b0', txt: val.toFixed(0) };
+    }
+
+    const s = (val > 0 ? '+' : '') + val.toFixed(2);
+    if (val > 0.20) return { bg: 'rgba(0,212,160,0.25)', col: '#00d4a0', txt: s };
+    if (val > 0.06) return { bg: 'rgba(0,212,160,0.12)', col: '#00a87e', txt: s };
+    if (Math.abs(val) <= 0.06) return { bg: 'rgba(139,144,158,0.08)', col: '#8b909e', txt: s };
+    if (val > -0.20) return { bg: 'rgba(255,71,87,0.12)', col: '#cc2e3f', txt: s };
+    return { bg: 'rgba(255,71,87,0.25)', col: '#ff4757', txt: s };
+  }
+
+  let html = `
+    <div class="heatmap-grid">
+      <div class="hm-header-cell" style="grid-column:1;"></div>
+      ${drivers.map(d => `<div class="hm-header-cell">${d}</div>`).join('')}
+  `;
+
+  CURRENCIES.forEach(c => {
+    if (!matrix[c.code]) return;
+
+    const cells = drivers.map(d => {
+      const val = matrix[c.code][d];
+      const isScore = d === 'RISK SCORE';
+      const { bg, col, txt } = cellColor(val, isScore);
+      const sub = isScore ? (val > 60 ? 'BEAR' : val < 40 ? 'BULL' : 'NEUT') : '';
+
+      return `
+        <div class="hm-cell" style="background:${bg};">
+          <span class="hm-val" style="color:${col};">${txt}</span>
+          ${sub ? `<span class="hm-sub" style="color:${col};">${sub}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    html += `
+      <div class="hm-label-cell">${c.flag || ''} ${c.code}</div>
+      ${cells}
+    `;
+  });
+
+  html += `</div>`;
+
+  html += `
+    <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">
+        Heatmap shows deviation of FX move vs macro-implied fair value.
+        <span style="color:var(--green);">Green = EM outperforming signal</span> ·
+        <span style="color:var(--red);">Red = EM underperforming vs macro</span>
+      </span>
+    </div>
+  `;
+
+  hm.innerHTML = html;
+
+  document.getElementById('hm-timestamp').textContent =
+    new Date().toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+}
+
+/* ============================================================
+   13. RENDER: SIGNALS
+============================================================ */
+function renderSignalPanel() {
+  const t = USER_DATA.thresholds;
+
+  const signals = CURRENCIES.map(c => {
+    const score = computeMacroScore(c);
+    const misp = computeMispricing(c);
+
+    let dir, dirClass, text;
+
+    if (score > t.shortScore && misp > t.mispricingTrigger) {
+      dir = 'SHORT EM';
+      dirClass = 'dir-short';
+      text = `Macro headwinds from USD and rates. FX looks rich relative to the model signal.`;
+    } else if (score < t.longScore && misp < -t.mispricingTrigger) {
+      dir = 'LONG EM';
+      dirClass = 'dir-long';
+      text = `FX looks cheap relative to macro inputs. Commodity support or softer USD improves the setup.`;
+    } else if (Math.abs(misp) > t.watchTrigger) {
+      dir = 'WATCH';
+      dirClass = 'dir-neutral';
+      text = `Mispricing detected (${misp > 0 ? '+' : ''}${misp.toFixed(3)}%) but broad macro score is not extreme.`;
+    } else {
+      dir = 'NEUTRAL';
+      dirClass = 'dir-neutral';
+      text = `FX is broadly in line with current macro drivers. No strong asymmetry.`;
+    }
+
+    return `
+      <div class="signal-item">
+        <span class="signal-currency">USD/${c.code}</span>
+        <span class="signal-text">${text}</span>
+        <span class="signal-dir ${dirClass}">${dir}</span>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('signal-panel').innerHTML = signals;
+}
+
+/* ============================================================
+   14. RENDER: COMMODITIES
+============================================================ */
+function renderCommodities() {
+  const items = [
+    { label: 'WTI Crude', key: 'OIL', prefix: '$', suffix: '/bbl', decimals: 2 },
+    { label: 'Copper HG', key: 'COPPER', prefix: '$', suffix: '/lb', decimals: 3 },
+    {
+      label: 'Brent (est)',
+      key: 'BRENT',
+      prefix: '$',
+      suffix: '/bbl',
+      decimals: 2,
+      derived: d => ({ value: d.OIL.value + 2.5, prev: d.OIL.prev + 2.4 })
+    }
+  ];
+
+  const html = items.map(item => {
+    let d;
+
+    if (item.derived) {
+      try {
+        d = item.derived(state.macro);
+      } catch (e) {
+        return '';
+      }
+    } else {
+      d = state.macro[item.key];
+    }
+
+    if (!d) return '';
+
+    const chg = safePercentChange(d.value, d.prev);
+    const chgStr = (chg >= 0 ? '+' : '') + chg.toFixed(3) + '%';
+    const chgClass = chg >= 0 ? 'pos-val' : 'neg-val';
+    const val = item.prefix + d.value.toFixed(item.decimals) + item.suffix;
+
+    return `
+      <div class="macro-item">
+        <div>
+          <div class="macro-label">${item.label}</div>
+        </div>
+        <div class="macro-value-wrap">
+          <div class="macro-value">${val}</div>
+          <div class="macro-chg ${chgClass}">${chgStr}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('commodity-panel').innerHTML =
+    html || '<div class="loading-text">No data</div>';
+}
+
+/* ============================================================
+   15. MAIN LOAD
+============================================================ */
+async function loadAllData() {
+  const liveDot = document.getElementById('live-dot');
+  const liveLabel = document.getElementById('live-label');
+
+  liveDot.style.background = '#ffc107';
+  liveLabel.textContent = 'LOADING';
+
+  await Promise.all([fetchFXRates(), fetchMacroData()]);
+
+  state.lastUpdate = new Date();
+  document.getElementById('last-update').textContent =
+    'Updated ' + state.lastUpdate.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+  renderTickerStrip();
+  renderFXTable();
+  renderMacroDrivers();
+  renderCorrelationMatrix();
+  renderHeatmap();
+  renderSignalPanel();
+  renderCommodities();
+  renderDXYChart();
+  renderYieldsChart();
+
+  liveDot.style.background = '#00d4a0';
+  liveLabel.textContent = 'LIVE';
+}
+
+/* ============================================================
+   16. INIT
+============================================================ */
+applyDashboardTitle();
+loadAllData();
+setInterval(loadAllData, SETTINGS.autoRefreshMs);
+</script>
+</body>
+</html>
