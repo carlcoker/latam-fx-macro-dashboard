@@ -2,9 +2,7 @@
 
 A simple dashboard for tracking major Latin American currencies against the main global drivers that usually matter for them.
 
-The point of the dashboard is to answer a practical question:
-
-**Are these currencies moving in a way that broadly matches the macro backdrop, or does something look out of line?**
+It compares where EM FX is trading to what macro suggests it should be doing. If there’s a gap, that flags potential relative value or positioning opportunities.
 
 ## What it covers
 
