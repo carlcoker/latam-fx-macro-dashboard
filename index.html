@@ -709,7 +709,7 @@
 
     <div class="card chart-card">
       <div class="card-header">
-        <span class="card-title">DXY Proxy vs LatAm FX</span>
+        <span class="card-title">Broad Dollar Index vs LatAm FX</span>
         <span class="card-badge">REAL</span>
       </div>
       <div class="card-body">
@@ -755,36 +755,24 @@
 
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Commodity Prices</span>
-        <span class="card-badge">REAL</span>
+        <span class="card-title">Commodity Inputs</span>
+        <span class="card-badge">MANUAL</span>
       </div>
-      <div class="card-body" style="padding:8px 16px;" id="commodity-panel">
-        <div class="loading-text" style="padding:20px 0;"><div class="spinner"></div></div>
-      </div>
+      <div class="card-body" style="padding:8px 16px;" id="commodity-panel"></div>
     </div>
   </div>
 
 <script>
-/* ============================================================
-   1. KEYS
-============================================================ */
 const KEYS = {
-  FRED_API_KEY: "5ebab12c933e896e0190d4bb0c629bf5",
-  ALPHA_VANTAGE_API_KEY: "BS9UZWDUTR8CNXV1"
+  FRED_API_KEY: "YOUR_FRED_KEY_HERE"
 };
 
-/* ============================================================
-   2. SETTINGS
-============================================================ */
 const SETTINGS = {
   dashboardTitleHTML: `LATAM·FX <span>/ MACRO MONITOR</span>`,
-  autoRefreshMs: null, // keep null on free tier
+  autoRefreshMs: 15 * 60 * 1000,
   historyPoints: 60
 };
 
-/* ============================================================
-   3. USER DATA
-============================================================ */
 const USER_DATA = {
   currencies: [
     { code: 'MXN', name: 'Mexican Peso',   flag: '🇲🇽', commodity: 'OIL', beta: 1.35 },
@@ -798,12 +786,13 @@ const USER_DATA = {
     bearishScore: 54,
     smallGap: 0.35,
     largeGap: 1.00
+  },
+  commodityInputs: {
+    OIL:  { value: 94.84, prev: 94.84, label: "WTI Crude", suffix: "/bbl", prefix: "$" },
+    COPPER: { value: 5.484, prev: 5.484, label: "Copper", suffix: "/lb", prefix: "$" }
   }
 };
 
-/* ============================================================
-   4. APP STATE
-============================================================ */
 const CURRENCIES = USER_DATA.currencies;
 
 let state = {
@@ -823,9 +812,6 @@ let state = {
   charts: {}
 };
 
-/* ============================================================
-   5. HELPERS
-============================================================ */
 function applyDashboardTitle() {
   document.getElementById('dashboard-logo').innerHTML = SETTINGS.dashboardTitleHTML;
 }
@@ -857,15 +843,47 @@ function mean(arr) {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-function stdDev(arr) {
-  if (!arr.length) return 0;
-  const m = mean(arr);
-  const v = arr.reduce((acc, x) => acc + (x - m) ** 2, 0) / arr.length;
-  return Math.sqrt(v);
+function correlation(x, y) {
+  if (!x.length || !y.length || x.length !== y.length) return null;
+  const mx = mean(x);
+  const my = mean(y);
+  let cov = 0, vx = 0, vy = 0;
+  for (let i = 0; i < x.length; i++) {
+    const dx = x[i] - mx;
+    const dy = y[i] - my;
+    cov += dx * dy;
+    vx += dx * dx;
+    vy += dy * dy;
+  }
+  if (vx === 0 || vy === 0) return null;
+  return cov / Math.sqrt(vx * vy);
 }
 
 function lastN(arr, n) {
   return arr.slice(Math.max(0, arr.length - n));
+}
+
+function toDateValueMap(arr) {
+  const map = new Map();
+  arr.forEach(d => map.set(d.date, d.value));
+  return map;
+}
+
+function intersectionMap(seriesMap) {
+  const keys = Object.keys(seriesMap);
+  if (!keys.length) return [];
+  const sets = keys.map(k => new Set(seriesMap[k].map(d => d.date)));
+  return [...sets[0]].filter(d => sets.every(s => s.has(d))).sort();
+}
+
+function seriesReturns(arr) {
+  const out = [];
+  for (let i = 1; i < arr.length; i++) {
+    const prev = arr[i - 1].value;
+    const curr = arr[i].value;
+    if (prev && curr) out.push({ date: arr[i].date, value: Math.log(curr / prev) });
+  }
+  return out;
 }
 
 function getGapLabel(value) {
@@ -880,60 +898,6 @@ function getGapClass(value) {
   return value > 0 ? 'neg-val' : 'pos-val';
 }
 
-function correlation(x, y) {
-  if (!x.length || !y.length || x.length !== y.length) return null;
-  const mx = mean(x);
-  const my = mean(y);
-  let cov = 0;
-  let vx = 0;
-  let vy = 0;
-
-  for (let i = 0; i < x.length; i++) {
-    const dx = x[i] - mx;
-    const dy = y[i] - my;
-    cov += dx * dy;
-    vx += dx * dx;
-    vy += dy * dy;
-  }
-
-  if (vx === 0 || vy === 0) return null;
-  return cov / Math.sqrt(vx * vy);
-}
-
-function intersectionMap(seriesMap) {
-  const keys = Object.keys(seriesMap);
-  if (!keys.length) return [];
-
-  const sets = keys.map(k => new Set(seriesMap[k].map(d => d.date)));
-  const commonDates = [...sets[0]].filter(d => sets.every(s => s.has(d))).sort();
-
-  return commonDates;
-}
-
-function toDateValueMap(arr) {
-  const map = new Map();
-  arr.forEach(d => map.set(d.date, d.value));
-  return map;
-}
-
-function seriesReturns(arr) {
-  const out = [];
-  for (let i = 1; i < arr.length; i++) {
-    const prev = arr[i - 1].value;
-    const curr = arr[i].value;
-    if (prev && curr) {
-      out.push({
-        date: arr[i].date,
-        value: Math.log(curr / prev)
-      });
-    }
-  }
-  return out;
-}
-
-/* ============================================================
-   6. API FETCHERS
-============================================================ */
 async function fetchFREDSeries(seriesId) {
   const url = new URL("https://api.stlouisfed.org/fred/series/observations");
   url.searchParams.set("series_id", seriesId);
@@ -944,7 +908,6 @@ async function fetchFREDSeries(seriesId) {
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`FRED fetch failed for ${seriesId}`);
-
   const data = await res.json();
   if (!data.observations) throw new Error(`No FRED observations for ${seriesId}`);
 
@@ -953,61 +916,28 @@ async function fetchFREDSeries(seriesId) {
     .filter(d => d.value !== null);
 }
 
-async function fetchAlphaVantageFX(from, to) {
-  const url = new URL("https://www.alphavantage.co/query");
-  url.searchParams.set("function", "FX_DAILY");
-  url.searchParams.set("from_symbol", from);
-  url.searchParams.set("to_symbol", to);
-  url.searchParams.set("outputsize", "compact");
-  url.searchParams.set("apikey", KEYS.ALPHA_VANTAGE_API_KEY);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Alpha Vantage FX fetch failed for ${from}/${to}`);
-
-  const data = await res.json();
-  const ts = data["Time Series FX (Daily)"];
-  if (!ts) throw new Error(`No FX daily data for ${from}/${to}`);
-
-  return Object.entries(ts)
-    .map(([date, row]) => ({ date, value: parseNumber(row["4. close"]) }))
-    .filter(d => d.value !== null)
-    .sort((a, b) => a.date.localeCompare(b.date));
+async function fetchFXLevels() {
+  const r = await fetch('https://open.er-api.com/v6/latest/USD');
+  if (!r.ok) throw new Error('FX API error');
+  const d = await r.json();
+  if (!d || !d.rates) throw new Error('No FX rates returned');
+  return d.rates;
 }
 
-async function fetchAlphaVantageCommodity(fnName) {
-  const url = new URL("https://www.alphavantage.co/query");
-  url.searchParams.set("function", fnName);
-  url.searchParams.set("interval", "daily");
-  url.searchParams.set("apikey", KEYS.ALPHA_VANTAGE_API_KEY);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Alpha Vantage commodity fetch failed for ${fnName}`);
-
-  const data = await res.json();
-  const raw = data.data;
-  if (!raw) throw new Error(`No commodity data for ${fnName}`);
-
-  return raw
-    .map(d => ({ date: d.date, value: parseNumber(d.value) }))
-    .filter(d => d.value !== null)
-    .sort((a, b) => a.date.localeCompare(b.date));
+function loadManualCommodityInputs() {
+  state.macro.OIL = { ...USER_DATA.commodityInputs.OIL };
+  state.macro.COPPER = { ...USER_DATA.commodityInputs.COPPER };
 }
 
-/* ============================================================
-   7. LOAD DATA
-============================================================ */
 async function loadAllData() {
   const liveDot = document.getElementById('live-dot');
   const liveLabel = document.getElementById('live-label');
 
-  if (
-    KEYS.FRED_API_KEY.includes("PASTE_YOUR") ||
-    KEYS.ALPHA_VANTAGE_API_KEY.includes("PASTE_YOUR")
-  ) {
+  if (KEYS.FRED_API_KEY.includes("YOUR_FRED_KEY_HERE")) {
     liveDot.style.background = '#ff4757';
-    liveLabel.textContent = 'ADD KEYS';
+    liveLabel.textContent = 'ADD KEY';
     document.getElementById('ticker-strip').innerHTML =
-      '<div class="loading-text">Add your FRED and Alpha Vantage API keys in the KEYS section first.</div>';
+      '<div class="loading-text">Add your FRED API key in the KEYS section first.</div>';
     return;
   }
 
@@ -1015,40 +945,42 @@ async function loadAllData() {
   liveLabel.textContent = 'LOADING';
 
   try {
-    const [mxn, brl, cop, clp, pen, wti, copper, dgs10, dgs2, dxy] = await Promise.all([
-      fetchAlphaVantageFX("USD", "MXN"),
-      fetchAlphaVantageFX("USD", "BRL"),
-      fetchAlphaVantageFX("USD", "COP"),
-      fetchAlphaVantageFX("USD", "CLP"),
-      fetchAlphaVantageFX("USD", "PEN"),
-      fetchAlphaVantageCommodity("WTI"),
-      fetchAlphaVantageCommodity("COPPER"),
+    const [fxLevels, dgs10, dgs2, dxy] = await Promise.all([
+      fetchFXLevels(),
       fetchFREDSeries("DGS10"),
       fetchFREDSeries("DGS2"),
       fetchFREDSeries("DTWEXBGS")
     ]);
 
-    state.history.fx = { MXN: mxn, BRL: brl, COP: cop, CLP: clp, PEN: pen };
-    state.history.macro = { OIL: wti, COPPER: copper, US10Y: dgs10, US2Y: dgs2, DXY: dxy };
-
     CURRENCIES.forEach(c => {
-      const series = state.history.fx[c.code];
-      const latest = series[series.length - 1];
-      const prev = series[series.length - 2];
+      const liveRate = fxLevels[c.code];
+      if (liveRate === undefined) throw new Error(`Missing FX rate for ${c.code}`);
       state.fx[c.code] = {
-        rate: latest.value,
-        prev: prev ? prev.value : latest.value
+        rate: liveRate,
+        prev: liveRate
       };
     });
 
-    Object.entries(state.history.macro).forEach(([key, series]) => {
-      const latest = series[series.length - 1];
-      const prev = series[series.length - 2];
-      state.macro[key] = {
-        value: latest.value,
-        prev: prev ? prev.value : latest.value
-      };
-    });
+    state.history.macro.US10Y = dgs10;
+    state.history.macro.US2Y = dgs2;
+    state.history.macro.DXY = dxy;
+
+    state.macro.US10Y = {
+      value: dgs10[dgs10.length - 1].value,
+      prev: dgs10[dgs10.length - 2]?.value ?? dgs10[dgs10.length - 1].value
+    };
+
+    state.macro.US2Y = {
+      value: dgs2[dgs2.length - 1].value,
+      prev: dgs2[dgs2.length - 2]?.value ?? dgs2[dgs2.length - 1].value
+    };
+
+    state.macro.DXY = {
+      value: dxy[dxy.length - 1].value,
+      prev: dxy[dxy.length - 2]?.value ?? dxy[dxy.length - 1].value
+    };
+
+    loadManualCommodityInputs();
 
     state.lastUpdate = new Date();
     document.getElementById('last-update').textContent =
@@ -1065,7 +997,7 @@ async function loadAllData() {
     renderHeatmap();
     renderSignalPanel();
     renderCommodities();
-    renderDXYChart();
+    renderDollarChart();
     renderYieldsChart();
 
     liveDot.style.background = '#00d4a0';
@@ -1079,9 +1011,6 @@ async function loadAllData() {
   }
 }
 
-/* ============================================================
-   8. MODEL LOGIC
-============================================================ */
 function computeMacroScore(currency) {
   const { code, beta, commodity } = currency;
   const dxy = state.macro.DXY;
@@ -1099,14 +1028,11 @@ function computeMacroScore(currency) {
   const copperMove = copper ? safePercentChange(copper.value, copper.prev) : 0;
 
   let score = 50;
-
   score += dxyMove * 4.0 * beta;
   score += (y10Level - 4.0) * 3.0;
   if (curve < 0) score += Math.abs(curve) * 5.0;
-
   if (commodity === 'OIL') score -= oilMove * 2.5 * beta;
   if (commodity === 'CU') score -= copperMove * 2.5 * beta;
-
   if (code === 'COP') score += 1.5;
   if (code === 'PEN') score -= 1.0;
 
@@ -1116,7 +1042,6 @@ function computeMacroScore(currency) {
 function computeMacroGap(currency) {
   const fx = state.fx[currency.code];
   if (!fx) return 0;
-
   const actual = safePercentChange(fx.rate, fx.prev);
   const implied = (computeMacroScore(currency) - 50) * 0.10;
   return actual - implied;
@@ -1132,7 +1057,7 @@ function getDriverBreakdown(currency) {
 
   out.push({
     impact: dxyMove * 4.0 * currency.beta,
-    text: `DXY proxy ${dxyMove >= 0 ? 'up' : 'down'} ${Math.abs(dxyMove).toFixed(2)}%`
+    text: `Dollar proxy ${dxyMove >= 0 ? 'up' : 'down'} ${Math.abs(dxyMove).toFixed(2)}%`
   });
 
   out.push({
@@ -1172,31 +1097,23 @@ function classifySignal(currency) {
   if (score >= t.bearishScore && gap > t.smallGap) {
     return { label: 'Bearish EM', className: 'dir-bearish' };
   }
-
   if (score <= t.bullishScore && gap < -t.smallGap) {
     return { label: 'Bullish EM', className: 'dir-bullish' };
   }
-
   if (Math.abs(gap) >= t.largeGap) {
     return { label: 'Watch', className: 'dir-watch' };
   }
-
   return { label: 'Neutral', className: 'dir-neutral' };
 }
 
-/* ============================================================
-   9. RENDER: TICKER STRIP
-============================================================ */
 function renderTickerStrip() {
   const items = [];
 
   CURRENCIES.forEach(c => {
     const d = state.fx[c.code];
     if (!d) return;
-
     const chg = safePercentChange(d.rate, d.prev);
     const cls = Math.abs(chg) < 0.01 ? 'neu' : chg > 0 ? 'pos' : 'neg';
-
     items.push(`
       <div class="ticker-item">
         <span class="ticker-sym">USD/${c.code}</span>
@@ -1219,11 +1136,9 @@ function renderTickerStrip() {
   macroDisplay.forEach(m => {
     const d = state.macro[m.k];
     if (!d) return;
-
     const chg = safePercentChange(d.value, d.prev);
     const cls = Math.abs(chg) < 0.01 ? 'neu' : chg > 0 ? 'pos' : 'neg';
     const val = d.value.toFixed(m.decimals) + (m.suffix || '');
-
     items.push(`
       <div class="ticker-item">
         <span class="ticker-sym">${m.label}</span>
@@ -1236,9 +1151,6 @@ function renderTickerStrip() {
   document.getElementById('ticker-strip').innerHTML = items.join('');
 }
 
-/* ============================================================
-   10. RENDER: FX TABLE
-============================================================ */
 function renderFXTable() {
   const rows = CURRENCIES.map(c => {
     const d = state.fx[c.code];
@@ -1311,9 +1223,6 @@ function renderFXTable() {
   `;
 }
 
-/* ============================================================
-   11. RENDER: MACRO PANEL
-============================================================ */
 function renderMacroDrivers() {
   const y10 = state.macro.US10Y?.value;
   const y2 = state.macro.US2Y?.value;
@@ -1342,8 +1251,8 @@ function renderMacroDrivers() {
       decimals: 2
     },
     {
-      label: 'WTI Crude Oil',
-      sub: 'Alpha Vantage daily series',
+      label: 'WTI Crude',
+      sub: 'Manual input',
       key: 'OIL',
       suffix: '',
       decimals: 2,
@@ -1351,7 +1260,7 @@ function renderMacroDrivers() {
     },
     {
       label: 'Copper',
-      sub: 'Alpha Vantage daily series',
+      sub: 'Manual input',
       key: 'COPPER',
       suffix: '/lb',
       decimals: 3,
@@ -1362,7 +1271,6 @@ function renderMacroDrivers() {
   const html = items.map(item => {
     const d = state.macro[item.key];
     if (!d) return '';
-
     const chg = safePercentChange(d.value, d.prev);
     const chgClass = chg >= 0 ? 'pos-val' : 'neg-val';
     const val = (item.prefix || '') + d.value.toFixed(item.decimals) + item.suffix;
@@ -1397,24 +1305,9 @@ function renderMacroDrivers() {
   document.getElementById('macro-drivers').innerHTML = html + spreadHtml;
 }
 
-/* ============================================================
-   12. RENDER: REAL CORRELATION MATRIX
-============================================================ */
 function renderCorrelationMatrix() {
-  const fxReturns = {};
-  Object.entries(state.history.fx).forEach(([k, series]) => {
-    fxReturns[k] = seriesReturns(lastN(series, 31));
-  });
-
-  const macroReturns = {
-    DXY: seriesReturns(lastN(state.history.macro.DXY, 31)),
-    OIL: seriesReturns(lastN(state.history.macro.OIL, 31)),
-    CU: seriesReturns(lastN(state.history.macro.COPPER, 31)),
-    '10Y': seriesReturns(lastN(state.history.macro.US10Y, 31))
-  };
-
   const pairs = CURRENCIES.map(c => c.code);
-  const macros = ['DXY', '10Y', 'OIL', 'CU'];
+  const macros = ['DXY', '10Y'];
 
   function getColor(v) {
     if (v === null) return { bg: 'rgba(139,144,158,0.08)', color: '#8b909e' };
@@ -1427,6 +1320,16 @@ function renderCorrelationMatrix() {
     return { bg: 'rgba(255,71,87,0.28)', color: '#ff6470' };
   }
 
+  const fxReturns = {};
+  Object.entries(state.history.fx).forEach(([k, series]) => {
+    if (series && series.length > 1) fxReturns[k] = seriesReturns(lastN(series, 31));
+  });
+
+  const macroReturns = {
+    DXY: seriesReturns(lastN(state.history.macro.DXY, 31)),
+    '10Y': seriesReturns(lastN(state.history.macro.US10Y, 31))
+  };
+
   const headerRow = `
     <div class="corr-header-row">
       ${macros.map(m => `<div class="corr-col-label">${m}</div>`).join('')}
@@ -1434,16 +1337,21 @@ function renderCorrelationMatrix() {
   `;
 
   const rows = pairs.map(pair => {
-    const fxMap = toDateValueMap(fxReturns[pair]);
     const cells = macros.map(m => {
-      const mMap = toDateValueMap(macroReturns[m]);
-      const common = [...fxMap.keys()].filter(d => mMap.has(d)).sort();
-      const x = common.map(d => fxMap.get(d));
-      const y = common.map(d => mMap.get(d));
-      const v = correlation(x, y);
+      let v = null;
+
+      if (fxReturns[pair]) {
+        const fxMap = toDateValueMap(fxReturns[pair]);
+        const mMap = toDateValueMap(macroReturns[m]);
+        const common = [...fxMap.keys()].filter(d => mMap.has(d)).sort();
+        const x = common.map(d => fxMap.get(d));
+        const y = common.map(d => mMap.get(d));
+        v = correlation(x, y);
+      }
+
       const { bg, color } = getColor(v);
       const label = v === null ? 'n/a' : v.toFixed(2).replace('-0.00', '0.00');
-      return `<div class="corr-cell" style="background:${bg};color:${color};" title="${pair} vs ${m}: ${label}">${label}</div>`;
+      return `<div class="corr-cell" style="background:${bg};color:${color};">${label}</div>`;
     }).join('');
 
     return `<div class="corr-row"><div class="corr-label">${pair}</div>${cells}</div>`;
@@ -1464,59 +1372,32 @@ function renderCorrelationMatrix() {
     headerRow + `<div class="corr-matrix">${rows}</div>` + legend;
 }
 
-/* ============================================================
-   13. REAL CHARTS
-============================================================ */
-function renderDXYChart() {
+function renderDollarChart() {
   const ctx = document.getElementById('dxyChart');
   if (!ctx) return;
   if (state.charts.dxy) state.charts.dxy.destroy();
 
-  const fxSeries = {
-    MXN: lastN(state.history.fx.MXN, SETTINGS.historyPoints),
-    BRL: lastN(state.history.fx.BRL, SETTINGS.historyPoints),
-    COP: lastN(state.history.fx.COP, SETTINGS.historyPoints)
-  };
   const dxySeries = lastN(state.history.macro.DXY, SETTINGS.historyPoints);
-
-  const commonDates = intersectionMap({
-    DXY: dxySeries,
-    MXN: fxSeries.MXN,
-    BRL: fxSeries.BRL,
-    COP: fxSeries.COP
-  });
-
-  const maps = {
-    DXY: toDateValueMap(dxySeries),
-    MXN: toDateValueMap(fxSeries.MXN),
-    BRL: toDateValueMap(fxSeries.BRL),
-    COP: toDateValueMap(fxSeries.COP)
-  };
-
-  function rebased(vals) {
-    const base = vals[0];
-    return vals.map(v => (v / base) * 100);
-  }
-
-  const labels = commonDates.map(d => {
-    const dt = new Date(d);
+  const labels = dxySeries.map(d => {
+    const dt = new Date(d.date);
     return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   });
 
-  const dxyData = rebased(commonDates.map(d => maps.DXY.get(d)));
-  const mxnData = rebased(commonDates.map(d => maps.MXN.get(d)));
-  const brlData = rebased(commonDates.map(d => maps.BRL.get(d)));
-  const copData = rebased(commonDates.map(d => maps.COP.get(d)));
+  const dxyData = dxySeries.map(d => d.value);
 
   state.charts.dxy = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Dollar proxy', data: dxyData, borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
-        { label: 'USD/MXN', data: mxnData, borderColor: '#00d4a0', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
-        { label: 'USD/BRL', data: brlData, borderColor: '#ffc107', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
-        { label: 'USD/COP', data: copData, borderColor: '#8b5cf6', borderWidth: 1.5, pointRadius: 0, tension: 0.25 }
+        {
+          label: 'Broad dollar index',
+          data: dxyData,
+          borderColor: '#3b82f6',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.25
+        }
       ]
     },
     options: {
@@ -1600,25 +1481,18 @@ function renderYieldsChart() {
   });
 }
 
-/* ============================================================
-   14. HEATMAP
-============================================================ */
 function renderHeatmap() {
-  const drivers = ['vs DXY', 'vs OIL', 'vs COPPER', 'vs US10Y', 'RISK SCORE'];
+  const drivers = ['vs DXY', 'vs US10Y', 'RISK SCORE'];
   const hm = document.getElementById('heatmap-wrap');
   const matrix = {};
 
   CURRENCIES.forEach(c => {
     const fxChg = safePercentChange(state.fx[c.code].rate, state.fx[c.code].prev);
     const dxyChg = safePercentChange(state.macro.DXY.value, state.macro.DXY.prev);
-    const oilChg = safePercentChange(state.macro.OIL.value, state.macro.OIL.prev);
-    const cuChg = safePercentChange(state.macro.COPPER.value, state.macro.COPPER.prev);
     const y10Chg = state.macro.US10Y.value - state.macro.US10Y.prev;
 
     matrix[c.code] = {
       'vs DXY': -fxChg - (-dxyChg * c.beta),
-      'vs OIL': (c.commodity === 'OIL' ? oilChg * 0.4 : oilChg * 0.15) - (-fxChg),
-      'vs COPPER': (c.commodity === 'CU' ? cuChg * 0.4 : cuChg * 0.1) - (-fxChg),
       'vs US10Y': -(-fxChg) - (-y10Chg * 2.5 * c.beta),
       'RISK SCORE': computeMacroScore(c)
     };
@@ -1643,7 +1517,7 @@ function renderHeatmap() {
   }
 
   let html = `
-    <div class="heatmap-grid">
+    <div class="heatmap-grid" style="grid-template-columns:110px repeat(3,1fr);">
       <div class="hm-header-cell" style="grid-column:1;"></div>
       ${drivers.map(d => `<div class="hm-header-cell">${d}</div>`).join('')}
   `;
@@ -1687,9 +1561,6 @@ function renderHeatmap() {
     });
 }
 
-/* ============================================================
-   15. SIGNALS
-============================================================ */
 function renderSignalPanel() {
   const signals = CURRENCIES.map(c => {
     const gap = computeMacroGap(c);
@@ -1723,9 +1594,6 @@ function renderSignalPanel() {
   document.getElementById('signal-panel').innerHTML = signals;
 }
 
-/* ============================================================
-   16. COMMODITIES PANEL
-============================================================ */
 function renderCommodities() {
   const items = [
     { label: 'WTI Crude', key: 'OIL', prefix: '$', suffix: '/bbl', decimals: 2 },
@@ -1753,13 +1621,9 @@ function renderCommodities() {
     `;
   }).join('');
 
-  document.getElementById('commodity-panel').innerHTML =
-    html || '<div class="loading-text">No data</div>';
+  html && (document.getElementById('commodity-panel').innerHTML = html);
 }
 
-/* ============================================================
-   17. INIT
-============================================================ */
 applyDashboardTitle();
 loadAllData();
 if (SETTINGS.autoRefreshMs) {
